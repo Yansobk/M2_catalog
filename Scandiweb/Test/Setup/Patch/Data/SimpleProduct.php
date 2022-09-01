@@ -17,6 +17,8 @@ use Magento\Catalog\Api\ProductRepositoryInterface;
 use Magento\Framework\App\State;
 use Magento\Framework\App\Area;
 use Magento\InventoryApi\Api\Data\SourceItemInterface;
+use Magento\InventoryApi\Api\Data\SourceItemInterfaceFactory;
+use Magento\InventoryApi\Api\SourceItemsSaveInterface;
 use Magento\Catalog\Api\CategoryLinkManagementInterface;
 use Magento\CatalogInventory\Api\StockRegistryInterface;
 
@@ -25,32 +27,42 @@ class SimpleProduct implements DataPatchInterface
     /**
      * @var ProductInterfaceFactory
      */
-    protected $productFactory;
+    protected ProductInterfaceFactory $productFactory;
     
     /**
      * @var State
      */
-    protected $state;
+    protected State $state;
     
     /**
      * @var ProductRepositoryInterface
      */
-    protected $productRepository;
+    protected ProductRepositoryInterface $productRepository;
 
     /**
      * @var CategoryLinkManagementInterface
      */
-    protected $categoryLink;
+    protected CategoryLinkManagementInterface $categoryLink;
 
     /**
      * @var StockRegistryInterface
      */
-    protected $stockRegistry;
+    protected StockRegistryInterface $stockRegistry;
 
-     /**
-     * @var SourceItemInterface
+    /**
+     * @var SourceItemInterfaceFactory
      */
-    protected $sourceItem;
+    protected SourceItemInterfaceFactory $sourceItem;
+
+    /**
+     * @var SourceItemsSaveInterface
+     */
+    protected SourceItemsSaveInterface $sourceItemsSaveInterface;
+
+    /**
+     * @var array
+     */
+    protected array $sourceItems = [];
 
     /**
      * @param ProductInterfaceFactory $productFactory
@@ -58,7 +70,8 @@ class SimpleProduct implements DataPatchInterface
      * @param ProductRepositoryInterface $productRepository
      * @param CategoryLinkManagementInterface $categoryLink
      * @param StockRegistryInterface $stockRegistry
-     * @param SourceItemInterface $sourceItem
+     * @param SourceItemInterfaceFactory $sourceItem
+     * @param SourceItemsSaveInterface $sourceItemsSaveInterface
      */
     public function __construct(
         ProductInterfaceFactory $productFactory,
@@ -66,19 +79,30 @@ class SimpleProduct implements DataPatchInterface
         ProductRepositoryInterface $productRepository,
         CategoryLinkManagementInterface $categoryLink,
         StockRegistryInterface $stockRegistry,
-        SourceItemInterface $sourceItem
+        SourceItemInterfaceFactory $sourceItem,
+        SourceItemsSaveInterface $sourceItemsSaveInterface
     ) {
+        $this->state = $state;
         $this->productFactory = $productFactory;
         $this->productRepository = $productRepository;
         $this->categoryLink = $categoryLink;
         $this->stockRegistry = $stockRegistry;
         $this->sourceItem = $sourceItem;
+        $this->sourceItemsSaveInterface = $sourceItemsSaveInterface;
     }
 
     /**
-     * @return $this
+     * @return void
      */
-    public function execute()
+    public function apply(): void
+    {
+        $this->state->emulateAreaCode(Area::AREA_ADMINHTML, [$this, 'execute']);
+    }
+
+    /**
+     * @return void
+     */
+    public function execute(): void
     {
         $product = $this->productFactory->create();
 
@@ -93,32 +117,31 @@ class SimpleProduct implements DataPatchInterface
                 ->setPrice(389.99)
                 ->setVisibility(Visibility::VISIBILITY_BOTH)
                 ->setStatus(Status::STATUS_ENABLED);
-
-        $this->sourceItem->setStatus(SourceItemInterface::STATUS_IN_STOCK);
         $this->productRepository->save($product);
 
-        $stockItem = $this->stockRegistry->getStockItemBySku($product->getSku());
-        $stockItem->setIsInStock(1);
-        $stockItem->setQty(100);
+        $sourceItem = $this->sourceItemFactory->create();
+        $sourceItem->setSourceCode('default');
+        $sourceItem->setQuantity(100);
+        $sourceItem->setSku($product->getSku());
+        $sourceItem->setStatus(SourceItemInterface::STATUS_IN_STOCK);
+        $this->sourceItems[] = $sourceItem;
+        $this->sourceItemsSaveInterface->execute($this->sourceItems);
 
-        $this->stockRegistry->updateStockItemBySku($product->getSku(), $stockItem);
         $this->categoryLink->assignProductToCategories($product->getSku(), [2]);
-
-        return $this;
     }
 
-    public function apply()
-    {
-        $this->state->setAreaCode(Area::AREA_ADMINHTML);
-        $this->state->emulateAreaCode(Area::AREA_ADMINHTML, [$this, 'execute']);
-    }
-
-    public static function getDependencies()
+    /**
+     * @return array
+     */
+    public static function getDependencies(): array
     {
         return [];
     }
 
-    public function getAliases()
+    /**
+     * @return array
+     */
+    public function getAliases(): array
     {
         return [];
     }
