@@ -1,4 +1,4 @@
-<?PHP
+<?php
 declare(strict_types=1);
 
 namespace Scandiweb\Test\Setup\Patch\Data;
@@ -28,12 +28,12 @@ class SimpleProduct implements DataPatchInterface
      * @var ProductInterfaceFactory
      */
     protected ProductInterfaceFactory $productFactory;
-    
+
     /**
      * @var State
      */
     protected State $state;
-    
+
     /**
      * @var ProductRepositoryInterface
      */
@@ -109,14 +109,15 @@ class SimpleProduct implements DataPatchInterface
         if (!$product->getIdBySku('P-13940')) {
             return;
         }
+
         $product->setTypeId(Type::TYPE_SIMPLE)
-                ->setAttributeSetId(4)
-                ->setName('Curved Monitor 27')
-                ->setSku('P-13940')
-                ->setUrlKey('curved-monitor-27-P13940')
-                ->setPrice(389.99)
-                ->setVisibility(Visibility::VISIBILITY_BOTH)
-                ->setStatus(Status::STATUS_ENABLED);
+            ->setAttributeSetId(4)
+            ->setName('Curved Monitor 27')
+            ->setSku('P-13940')
+            ->setUrlKey('curved-monitor-27-P13940')
+            ->setPrice(389.99)
+            ->setVisibility(Visibility::VISIBILITY_BOTH)
+            ->setStatus(Status::STATUS_ENABLED);
         $this->productRepository->save($product);
 
         $sourceItem = $this->sourceItemFactory->create();
